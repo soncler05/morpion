@@ -1,4 +1,4 @@
-
+//#region Main
   var canvas = new fabric.Canvas('c');
   canvas.selection = false;
   var canvasWidth = canvas.getWidth();
@@ -9,6 +9,7 @@
     {id: 2, name: 'Clerson', isFirst:true, color:'#77BA99'},
     {id: 1, name: 'Clervil', isFirst: false, color:'#D33F49'}
   ];
+  var lastPin;
 
   document.getElementById("box-1").style.backgroundColor = players.find(x => x.id === 1).color;
   document.getElementById("box-2").style.backgroundColor =players.find(x => x.id === 2).color;
@@ -22,13 +23,11 @@
   var tmp;
   
   canvas.on('mouse:move', function(options) {
-    var pointer = canvas.getPointer(options.e);
 
     var result = calculatePosition(options.e.layerX, options.e.layerY, 10); 
-    var result = calculatePosition(pointer.x, pointer.y, 10); 
 
     if(tmp) canvas.remove(tmp);
-    tmp = addCircle(result.left+6.5, result.top-4, players.find(x => x.id === turnId).color, 0.4);
+    tmp = addCircle(result.left, result.top, players.find(x => x.id === turnId).color, 0.4);
 
   });
   canvas.on('mouse:out', function(options) {
@@ -42,23 +41,28 @@
     var result = calculatePosition(options.e.layerX, options.e.layerY, 10); 
     var result = calculatePosition(pointer.x, pointer.y, 10); 
 
-    var pin = {x:result.left+6.5, y:result.top-4};
+    var pin = {x:result.left, y:result.top};
+    
+    var circleResult = addCircle(pin.x, pin.y, players.find(x => x.id === turnId).color);
+    if (!circleResult) return;
 
-    if(pins.find(p => p.x === pin.x && p.y === pin.y)) return;
+    if(lastPin) canvas.remove(lastPin);
+    lastPin = addLastCircle(pin.x, pin.y, players.find(x => x.id === turnId).color);
 
-    addCircle(pin.x, pin.y, players.find(x => x.id === turnId).color);
     pins.push({x:pin.x, y:pin.y, playerId:turnId});
     console.log(turnId);
     
-    console.log(result.left+6.5, result.top-4);
+    console.log(result.left, result.top);
     
     var alignPins = isComplete(pin); 
     if (alignPins) {
       var turnIdLocal = turnId;
+      addLine(alignPins[0], alignPins[alignPins.length-1], players.find(x => x.id === turnIdLocal).color);
+      console.log(alignPins);
       isEnded = true;
       setTimeout(() => {
         alert(` ${players.find(x => x.id === turnIdLocal).name} ha completado un cinco!!!` );
-      }, 10 );
+      }, 500 );
     }
 
     changePlayer();
@@ -70,22 +74,15 @@
      var calculateTop = Math.round(top / (width*4));
 
      return {
-       top:  calculateTop*4*width - width,
-       left: calculateLeft*4*width -width
+       top:  calculateTop*4*width,
+       left: calculateLeft*4*width
      }
 
   }
-    
-    
-    
-  // draw_grid2(600, 1200, 10, 0.05);
-  // draw_grid2(600, 1200, 40, 0.1);
-  // canvas.renderAll();
 
   draw_grid(10, 0.3);
   draw_grid(40, 0.8);
 
-  // draw_grid(20);
   
   function draw_grid(size, opacity = 0.3) {
 
@@ -137,23 +134,43 @@
   canvas.renderAll();
 }
 
-function draw_grid2(heightTot, widthTot, width, borderWidth){
-  var rowNumber = heightTot/width;
-  var colNumber = widthTot/width;
-  for (let index = 0; index < rowNumber; index++) {
-    for (let ind = 0; ind < colNumber; ind++) {
-      addRect(ind*width, index*width, width, borderWidth);
-    }
-  }
-}
-
 
 function addCircle(left, top, color='black', opacity=1) {
   if(left<0 || top<0 || left>1200-20 || top>600-20 || isEnded) return;
-  var circle = new fabric.Circle({ angle: 30, radius: 10, top: top, left: left, opacity: opacity, fill:color });
+  if(pins.find(p => p.x === left && p.y ===top)) return;
+  var circle = new fabric.Circle({ 
+    angle: 30,
+    radius: 10,
+    top: top,
+    left: left,
+    opacity: opacity,
+    fill:color,
+    originX: 'center',
+    originY: 'center'
+   });
   circle.selectable = false;
   circle.hoverCursor = 'default';
   canvas.add(circle);
+  return circle;
+}
+
+function addLastCircle(left, top, color='black', opacity= 0.5) {
+  var circle = new fabric.Circle({ 
+    angle: 30, 
+    radius: 10, 
+    top: top, 
+    left: left, 
+    opacity: opacity, 
+    fill:color,
+    originX: 'center',
+    originY: 'center',
+  });
+  circle.selectable = false;
+  circle.hoverCursor = 'default';
+  canvas.add(circle);
+
+  animateCircle(circle, 1);
+
   return circle;
 }
 
@@ -171,12 +188,31 @@ function addRect(left, top, width, borderWidth) {
   canvas.add(rect);
 }
 
+function addLine(pinFirst, pinLast, color='black') {
+  const line = new fabric.Line([pinFirst.x, pinFirst.y, pinFirst.x, pinFirst.y], {
+    stroke: color
+  });
+  line.selectable = false;
+  line.hoverCursor = 'default';
+  canvas.add(line);
+  line.animate({
+    x2: pinLast.x,
+    y2: pinLast.y
+  }, {
+    onChange: canvas.renderAll.bind(canvas),
+    onComplete: function() {
+      line.setCoords();
+    },
+    duration: 3000
+  });
+}
+
 function isComplete(pin) {
   var alignPins = [];
 
   for (let ind = 0; ind < directions.length; ind++) {
     const element = directions[ind];
-    alignPins = [...getAligns(pin, element, 1), ...getAligns(pin, element, -1)];
+    alignPins = [...getAligns(pin, element, -1), ...getAligns(pin, element, 1)];
 
     if (alignPins.length === 5) {
       return alignPins;
@@ -191,8 +227,14 @@ function isComplete(pin) {
         x: pin.x + (element.x*40*index*sign), 
         y: pin.y + (element.y*40*index*sign)
       };
+      if (sign === 1) {
+        
+      } else {
+        
+      }
       if(pins.find(p => p.x === calculatePin.x && p.y === calculatePin.y && p.playerId === turnId)) 
-        alignPins.push(calculatePin);
+        if(sign === 1) alignPins.push(calculatePin);
+        else alignPins.unshift(calculatePin);
       else break;      
     }
     return alignPins;
@@ -204,3 +246,39 @@ function isComplete(pin) {
 function changePlayer() {
   turnId = players.find(x => x.id != turnId).id;
 }
+
+
+function animateCircle(circle, dir, max=1) {
+  const minScale = 1;
+  const maxScale = 1.5;
+  let counter = 1;
+  action(dir);
+  function action(dir) {
+    return new Promise(resolve => {
+      circle.animate({
+        scaleX: dir ? maxScale : minScale,
+        scaleY: dir ? maxScale : minScale
+      }, {
+        easing: fabric.util.ease.easeOutCubic,
+        duration: 1000,
+        onChange: canvas.renderAll.bind(canvas),
+        onComplete: function() {
+          if (counter >= max) {
+            resolve('finished animating the point');
+          } else {
+            if (dir == 1)
+              action(0);
+            else
+              action(1);
+  
+          }
+          counter++;
+        }
+  
+      });
+    });
+  }
+
+}
+
+//#endregion
