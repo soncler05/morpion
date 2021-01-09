@@ -72,9 +72,9 @@
       addLine(alignPins[0], alignPins[alignPins.length-1], players.find(x => x.id === turnIdLocal).color);
       console.log(alignPins);
       isEnded = true;
-      setTimeout(() => {
-        alert(` ${players.find(x => x.id === turnIdLocal).name} ha completado un cinco!!!` );
-      }, 500 );
+      // setTimeout(() => {
+      //   alert(` ${players.find(x => x.id === turnIdLocal).name} ha completado un cinco!!!` );
+      // }, 500 );
     }
 
     changePlayer();
@@ -206,7 +206,10 @@ function addRect(left, top, width, borderWidth) {
 
 function addLine(pinFirst, pinLast, color='black') {
   const line = new fabric.Line([pinFirst.x, pinFirst.y, pinFirst.x, pinFirst.y], {
-    stroke: color
+    stroke: color,
+    strokeWidth: 3,
+    originX: 'center',
+    originY: 'center'
   });
   line.selectable = false;
   line.hoverCursor = 'default';
@@ -218,8 +221,9 @@ function addLine(pinFirst, pinLast, color='black') {
     onChange: canvas.renderAll.bind(canvas),
     onComplete: function() {
       line.setCoords();
+      alert(` ${players.find(x => x.id === pinLast.playerId).name} ha completado un cinco!!!` );
     },
-    duration: 3000
+    duration: 2000
   });
 }
 
@@ -247,8 +251,8 @@ function isComplete(pin, toGroup=true, directionIndex = null, otherPlayer= false
     for (let index = 1; index <= 6; index++) {
       var nextPin = calculateNextPin(pin, element, sign, index);
       nextPin.playerId = playerId;
-      
-      if(pins.find(p => p.x === nextPin.x && p.y === nextPin.y && p.playerId === playerId)) 
+      nextPin = pins.find(p => p.x === nextPin.x && p.y === nextPin.y && p.playerId === playerId);
+      if(nextPin) 
         if(sign === 1) alignPins.push(nextPin);
         else alignPins.unshift(nextPin);
       else break;      
@@ -304,6 +308,17 @@ function animateCircle(circle, dir, max=1) {
 
 }
 
+function orderTwoPins(pinA, pinB) {
+  let result = [];
+  if(pinA.y === pinB.y) {
+    result = pinA.x - pinB.x < 0 ? [pinA, pinB] : [pinB, pinA]; 
+  } else {
+    result = pinA.y -pinB.y < 0 ? [pinA, pinB] : [pinB, pinA]; 
+  }
+  return result;
+}
+
+
 //#endregion
 
 
@@ -311,8 +326,11 @@ function animateCircle(circle, dir, max=1) {
 //#region AutomaticPlayer
 let twoPins = []; 
 let oneWayTwoPins = []; 
+let twoPinsPlus1 = []; 
+let twoPinsPlus2 = []; 
 let threePins = []; 
 let oneWayThreePins = []; 
+let ThreePinsPlus1 = []; 
 let fourPins = [];  
 
 // goodOption = []; 
@@ -320,8 +338,8 @@ let fourPins = [];
 
 const starterPatterns = [
   {name: 'line'},
-  {name: 'triangle'},
-  {name: 'bigTriangle'},
+  // {name: 'triangle'},
+  // {name: 'bigTriangle'},
 ]
 const starterPattern = starterPatterns[getRandomInt(0, starterPatterns.length-1)];
 function calculateCenter() {
@@ -389,6 +407,7 @@ function calculateSecondPin(pin, distance=1) {
 }
 
 function group(pins, directionIndex) {
+  console.log('group: ' + pins.map(x => x.id));
   const pinsGroup = {playerId:pins[0].playerId, directionIndex: directionIndex, pins: pins};
   switch (pins.length) {
     case 2:
@@ -447,12 +466,13 @@ function smartPlay() {
     const nextFirstPin = calculateNextPin(firstGroupPins.pins[0], directions[firstGroupPins.directionIndex], -1, 1);
     const lastPin = firstGroupPins.pins[firstGroupPins.pins.length - 1];
     const nextLastPin = calculateNextPin(lastPin, directions[firstGroupPins.directionIndex], 1, 1);
-    if ( isPinValid(nextFirstPin) 
-          && pins.findIndex(p => p.x == nextFirstPin.x && p.y === nextFirstPin.y) === -1
+    if ( //!pins.find(p => p.x === nextFirstPin.x && p.y === nextFirstPin.y) && 
+          isPinValid(nextFirstPin) &&
+          pins.findIndex(p => p.x == nextFirstPin.x && p.y === nextFirstPin.y) === -1
           && isComplete(nextFirstPin, false, firstGroupPins.directionIndex).length === 5
         ) {
       play(nextFirstPin);
-    } else if(
+    } else if( //!pins.find(p => p.x === nextLastPin.x && p.y === nextLastPin.y) &&
                 isPinValid(nextLastPin)  
                 && pins.findIndex(p => p.x == nextLastPin.x && p.y === nextLastPin.y) === -1
                 && isComplete(nextLastPin, false, firstGroupPins.directionIndex).length === 5
@@ -490,6 +510,30 @@ function smartPlay() {
     return;
   }
   
+  // //threePins + 1 --automaticPlayer
+  // const autoFourPins = fourPins.filter(x => x.playerId === automaticPlayer.id);
+  // if(autoFourPins.length > 0) {
+  //   const firstGroupPins = autoFourPins[0];
+  //   const nextFirstPin = calculateNextPin(firstGroupPins.pins[0], directions[firstGroupPins.directionIndex], -1, 1);
+  //   const lastPin = firstGroupPins.pins[firstGroupPins.pins.length - 1];
+  //   const nextLastPin = calculateNextPin(lastPin, directions[firstGroupPins.directionIndex], 1, 1);
+  //   if ( isPinValid(nextFirstPin) 
+  //         && pins.findIndex(p => p.x == nextFirstPin.x && p.y === nextFirstPin.y) === -1
+  //         && isComplete(nextFirstPin, false, firstGroupPins.directionIndex).length === 5
+  //       ) {
+  //     play(nextFirstPin);
+  //   } else if(
+  //               isPinValid(nextLastPin)  
+  //               && pins.findIndex(p => p.x == nextLastPin.x && p.y === nextLastPin.y) === -1
+  //               && isComplete(nextLastPin, false, firstGroupPins.directionIndex).length === 5
+  //             ) {
+  //     play(nextLastPin);
+  //   } else {
+  //     fourPins.splice(fourPins.findIndex(x => x.playerId === automaticPlayer.id), 1);
+  //     smartPlay();
+  //   }
+  //   return;
+  // }
 
 
 }
