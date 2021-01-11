@@ -318,6 +318,10 @@ function orderTwoPins(pinA, pinB) {
   return result;
 }
 
+function getPinById(id) {
+  return pins.find(x => x.id === id);
+}
+
 
 //#endregion
 
@@ -408,7 +412,7 @@ function calculateSecondPin(pin, distance=1) {
 
 function group(pins, directionIndex) {
   console.log('group: ' + pins.map(x => x.id));
-  const pinsGroup = {playerId:pins[0].playerId, directionIndex: directionIndex, pins: pins};
+  const pinsGroup = {playerId:pins[0].playerId, directionIndex: directionIndex, pinIds: pins.map(x => x.id)};
   switch (pins.length) {
     case 2:
       twoPins.push(pinsGroup);
@@ -450,8 +454,8 @@ function group(pins, directionIndex) {
 function cleanGroup(bigGroup, pinsGroup) {
   var indexToRemove = bigGroup.find(x => 
     pinsGroup.directionIndex === x.directionIndex &&  
-    pinsGroup.pins.findIndex(p => p.x === x.pins[0].x && p.y === x.pins[0].y) > -1 &&  
-    pinsGroup.pins.findIndex(p => p.x === x.pins[x.pins.length-1].x && p.y === x.pins[x.pins.length-1].y) > -1)
+    pinsGroup.pinIds.findIndex(p => p.x === x.pinIds[0]) > -1 &&  
+    pinsGroup.pinIds.findIndex(p => p.x === x.pinIds[x.pins.length-1]) > -1)
   if(indexToRemove > -1) {
       bigGroup.splice(indexToRemove,1);
     }
@@ -463,8 +467,8 @@ function smartPlay() {
   const autoFourPins = fourPins.filter(x => x.playerId === automaticPlayer.id);
   if(autoFourPins.length > 0) {
     const firstGroupPins = autoFourPins[0];
-    const nextFirstPin = calculateNextPin(firstGroupPins.pins[0], directions[firstGroupPins.directionIndex], -1, 1);
-    const lastPin = firstGroupPins.pins[firstGroupPins.pins.length - 1];
+    const nextFirstPin = calculateNextPin(getPinById(firstGroupPins.pinIds[0]), directions[firstGroupPins.directionIndex], -1, 1);
+    const lastPin = getPinById(firstGroupPins.pinIds[firstGroupPins.pinIds.length - 1]);
     const nextLastPin = calculateNextPin(lastPin, directions[firstGroupPins.directionIndex], 1, 1);
     if ( //!pins.find(p => p.x === nextFirstPin.x && p.y === nextFirstPin.y) && 
           isPinValid(nextFirstPin) &&
@@ -489,8 +493,8 @@ function smartPlay() {
   const playerFourPins = fourPins.filter(x => x.playerId != automaticPlayer.id);
   if(playerFourPins.length > 0) {
     const firstGroupPins = playerFourPins[0];
-    const nextFirstPin = calculateNextPin(firstGroupPins.pins[0], directions[firstGroupPins.directionIndex], -1, 1);
-    const lastPin = firstGroupPins.pins[firstGroupPins.pins.length - 1];
+    const nextFirstPin = calculateNextPin(getPinById(firstGroupPins.pinIds[0]), directions[firstGroupPins.directionIndex], -1, 1);
+    const lastPin = getPinById(firstGroupPins.pinIds[firstGroupPins.pinIds.length - 1]);
     const nextLastPin = calculateNextPin(lastPin, directions[firstGroupPins.directionIndex], 1, 1);
     if ( isPinValid(nextFirstPin) 
           && pins.findIndex(p => p.x == nextFirstPin.x && p.y === nextFirstPin.y) === -1
@@ -509,6 +513,79 @@ function smartPlay() {
     }
     return;
   }
+  
+  //threePins --automaticPlayer
+  const autoThreePins = threePins.filter(x => x.playerId === automaticPlayer.id);
+  if(autoThreePins.length > 0) {
+    let firstGroupPins = autoThreePins.find(x => {
+      const firstPin = getPinById(x.pinIds[0]);
+      const lastPin = getPinById(x.pinIds[x.pinIds.length - 1]);
+      const nextFirstPin =  calculateNextPin(firstPin, directions[x.directionIndex], -1);
+      const nextLastPin =  calculateNextPin(lastPin, directions[x.directionIndex], 1);
+      return isPinValid(nextFirstPin) && pins.findIndex(z => z.x === nextFirstPin && z.y === nextFirstPin.y) < -1
+            && isPinValid(nextLastPin) && pins.findIndex(z => z.x === nextLastPin && z.y === nextLastPin.y) < -1;
+    });
+    firstGroupPins = firstGroupPins ? firstGroupPins : autoThreePins[0];
+    const nextFirstPin = calculateNextPin(getPinById(firstGroupPins.pinIds[0]), directions[firstGroupPins.directionIndex], -1, 1);
+    const lastPin = getPinById(firstGroupPins.pinIds[firstGroupPins.pinIds.length - 1]);
+    const nextLastPin = calculateNextPin(lastPin, directions[firstGroupPins.directionIndex], 1, 1);
+    let resultPins = [];
+    if ( 
+          isPinValid(nextFirstPin) &&
+          pins.findIndex(p => p.x === nextFirstPin.x && p.y === nextFirstPin.y) === -1
+          && pins.findIndex(p => p.x === nextFirstPin.x && p.y === nextFirstPin.y) === -1
+        ) {
+      resultPins.push(nextFirstPin);
+    } else if( 
+                isPinValid(nextLastPin)  
+                && pins.findIndex(p => p.x == nextLastPin.x && p.y === nextLastPin.y) === -1
+              ) {
+        resultPins.push(nextLastPin);
+    } else {
+      threePins.splice(threePins.findIndex(x => x.playerId === automaticPlayer.id), 1);
+      smartPlay();
+      return;
+    }
+    play(resultPins[getRandomInt(0, resultPins.length - 1)]);
+    return;
+  }
+  
+  //threePins --player
+  const playerThreePins = threePins.filter(x => x.playerId != automaticPlayer.id);
+  if(playerThreePins.length > 0) {
+    let firstGroupPins = playerThreePins.find(x => {
+      const firstPin = getPinById(x.pinIds[0]);
+      const lastPin = getPinById(x.pinIds[x.pinIds.length - 1]);
+      const nextFirstPin =  calculateNextPin(firstPin, directions[x.directionIndex], -1);
+      const nextLastPin =  calculateNextPin(lastPin, directions[x.directionIndex], 1);
+      return isPinValid(nextFirstPin) && pins.findIndex(z => z.x === nextFirstPin && z.y === nextFirstPin.y) < -1
+            && isPinValid(nextLastPin) && pins.findIndex(z => z.x === nextLastPin && z.y === nextLastPin.y) < -1;
+    });
+    firstGroupPins = firstGroupPins ? firstGroupPins : playerThreePins[0];
+    const nextFirstPin = calculateNextPin(getPinById(firstGroupPins.pinIds[0]), directions[firstGroupPins.directionIndex], -1, 1);
+    const lastPin = getPinById(firstGroupPins.pinIds[firstGroupPins.pinIds.length - 1]);
+    const nextLastPin = calculateNextPin(lastPin, directions[firstGroupPins.directionIndex], 1, 1);
+    let resultPins = [];
+    if ( 
+          isPinValid(nextFirstPin) &&
+          pins.findIndex(p => p.x === nextFirstPin.x && p.y === nextFirstPin.y) === -1
+          && pins.findIndex(p => p.x === nextFirstPin.x && p.y === nextFirstPin.y) === -1
+        ) {
+      resultPins.push(nextFirstPin);
+    } else if( 
+                isPinValid(nextLastPin)  
+                && pins.findIndex(p => p.x == nextLastPin.x && p.y === nextLastPin.y) === -1
+              ) {
+        resultPins.push(nextLastPin);
+    } else {
+      threePins.splice(threePins.findIndex(x => x.playerId === automaticPlayer.id), 1);
+      smartPlay();
+      return;
+    }
+    play(resultPins[getRandomInt(0, resultPins.length - 1)]);
+    return;
+  }
+
   
   // //threePins + 1 --automaticPlayer
   // const autoFourPins = fourPins.filter(x => x.playerId === automaticPlayer.id);
