@@ -20,7 +20,7 @@
     } */
 </style>
 </head>
-<body>
+<body ng-app="myApp" ng-controller="myController as ctrl">
     <div class="row">
         <canvas id="c" width="1201" height="601"></canvas>
         <div class="col-lg-10">
@@ -36,8 +36,37 @@
             </div>
         </div>
     </div>
-    
-    
+    <button ng-click="ver = !ver" class="btn btn-primary">Ver</button>
+    <div class="row" ng-if="ver">
+        <div class="col-3">
+            <ol>
+                <li ng-repeat="p in twoPins">
+                    <span ng-repeat="x in p.pinIds">
+                        ({{getPinById(x) | json}});
+                    </span>
+                </li>
+            </ol>
+        </div>
+        <div class="col-3">
+            <ol>
+                <li ng-repeat="p in threePins">
+                    <span ng-repeat="x in p.pinIds">
+                        ({{getPinById(x) | json}});
+                    </span>
+                </li>
+            </ol>
+        </div>
+        <div class="col-3">
+            <ol>
+                <li ng-repeat="p in fourPins">
+                    <span ng-repeat="x in p.pinIds">
+                        ({{getPinById(x) | json}});
+                    </span>
+                </li>
+            </ol>
+        </div>
+    </div>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.5/angular.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/4.3.0/fabric.min.js"></script>
     <script src="main.js"></script>
 </body>

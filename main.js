@@ -1,3 +1,9 @@
+var module = angular.module('myApp', []);
+
+module.controller("myController", function($scope) {
+
+  $scope.hello = "Hello Nía";
+
 //#region Main
   var canvas = new fabric.Canvas('c', 
   {
@@ -321,6 +327,10 @@ function orderTwoPins(pinA, pinB) {
 function getPinById(id) {
   return pins.find(x => x.id === id);
 }
+function one(p) {
+  return 1;
+}
+$scope.getPinById =getPinById;
 
 
 //#endregion
@@ -336,6 +346,10 @@ let threePins = [];
 let oneWayThreePins = []; 
 let ThreePinsPlus1 = []; 
 let fourPins = [];  
+
+$scope.twoPins = twoPins;
+$scope.threePins = threePins;
+$scope.fourPins = fourPins;
 
 // goodOption = []; 
 
@@ -452,13 +466,26 @@ function group(pins, directionIndex) {
 // }
 
 function cleanGroup(bigGroup, pinsGroup) {
-  var indexToRemove = bigGroup.find(x => 
+  console.log("clean group");
+  console.log(bigGroup);
+  console.log(pinsGroup);
+  var indexToRemove = bigGroup.findIndex(x => 
     pinsGroup.directionIndex === x.directionIndex &&  
-    pinsGroup.pinIds.findIndex(p => p.x === x.pinIds[0]) > -1 &&  
-    pinsGroup.pinIds.findIndex(p => p.x === x.pinIds[x.pins.length-1]) > -1)
+    pinsGroup.pinIds.findIndex(p => p === x.pinIds[0]) > -1 &&  
+    pinsGroup.pinIds.findIndex(p => p === x.pinIds[x.pinIds.length-1]) > -1)
   if(indexToRemove > -1) {
       bigGroup.splice(indexToRemove,1);
     }
+}
+
+function cleanThreePinGroup(userId) {
+  const toClean = threePins.filter(gp => {
+    const firstNextPin = calculateNextPin(getPinById(gp.pinIds[0]), directions[gp.directionIndex], -1); 
+    const lastNextPin = calculateNextPin(getPinById(gp.pinIds[gp.pinIds.length - 1]), directions[gp.directionIndex], 1); 
+    
+    
+
+  } );
 }
 
 function smartPlay() {
@@ -628,3 +655,5 @@ function getRandomInt(min, max) {
 }
 
 //#endregion
+
+});
