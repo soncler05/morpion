@@ -40,6 +40,7 @@
     <div class="row" ng-if="ver">
         <div class="col-3">
             <ol>
+                <h5>Two</h5>
                 <li ng-repeat="p in twoPins">
                     <span ng-repeat="x in p.pinIds">
                         ({{getPinById(x) | json}});
@@ -49,6 +50,7 @@
         </div>
         <div class="col-3">
             <ol>
+                <h5>Three</h5>
                 <li ng-repeat="p in threePins">
                     <span ng-repeat="x in p.pinIds">
                         ({{getPinById(x) | json}});
@@ -58,6 +60,7 @@
         </div>
         <div class="col-3">
             <ol>
+                <h5>Four</h5>
                 <li ng-repeat="p in fourPins">
                     <span ng-repeat="x in p.pinIds">
                         ({{getPinById(x) | json}});

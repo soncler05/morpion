@@ -20,10 +20,11 @@ module.controller("myController", function($scope) {
   const automaticPlayer = {id: 2, name: '20-100', color:'#D33F49'};
   turnId = automaticPlayer.id;
   var players = [
-    {id: 1, name: 'Clerson', isFirst:true, color:'#77BA99'},
+    {id: 1, name: 'Karolina', isFirst:true, color:'#77BA99'},
     // {id: 2, name: 'Clervil', isFirst: false, color:'#D33F49'}
     automaticPlayer
   ];
+
   var lastPin;
 
   document.getElementById("box-1").style.backgroundColor = players.find(x => x.id === 1).color;
@@ -60,7 +61,7 @@ module.controller("myController", function($scope) {
   function play(pin) {
     
     var circleResult = addCircle(pin.x, pin.y, players.find(x => x.id === turnId).color);
-    if (!circleResult) return;
+    if (!circleResult) return circleResult;
 
     if(lastPin) canvas.remove(lastPin);
     lastPin = addLastCircle(pin.x, pin.y, players.find(x => x.id === turnId).color);
@@ -70,22 +71,19 @@ module.controller("myController", function($scope) {
 
     pins.push(pin);
     console.log(turnId);
-    
-    
+        
     var alignPins = isComplete(pin); 
     if (alignPins) {
       var turnIdLocal = turnId;
       addLine(alignPins[0], alignPins[alignPins.length-1], players.find(x => x.id === turnIdLocal).color);
       console.log(alignPins);
       isEnded = true;
-      // setTimeout(() => {
-      //   alert(` ${players.find(x => x.id === turnIdLocal).name} ha completado un cinco!!!` );
-      // }, 500 );
     }
 
     changePlayer();
     automaticPlay();
 
+    return circleResult;
   }
 
   function calculatePosition(left, top, width) {
@@ -193,7 +191,16 @@ function addLastCircle(left, top, color='black', opacity= 0.5) {
 
   animateCircle(circle, 1);
 
+  checkIsMapIsFull();
+
   return circle;
+}
+
+function checkIsMapIsFull() {
+  if (totalPins === pins.length) {
+    isEnded = true;
+    alert('Ya no hay más jugada posible');
+  }
 }
 
 function addRect(left, top, width, borderWidth) {
@@ -268,6 +275,8 @@ function isComplete(pin, toGroup=true, directionIndex = null, otherPlayer= false
 
 }
 
+
+
 function calculateNextPin(originPin, direction, sign, distance) {
   return {
     x: originPin.x + (direction.x*40*distance*sign), 
@@ -327,9 +336,13 @@ function orderTwoPins(pinA, pinB) {
 function getPinById(id) {
   return pins.find(x => x.id === id);
 }
-function one(p) {
-  return 1;
+function getPinByXY(pin) {
+  return pins.find(p => p.x === pin.x && p.y === pin.y);
 }
+function getPinByXYAndUserId(pin, playerId) {
+  return pins.find(p => p.x === pin.x && p.y === pin.y && p.playerId === playerId);
+}
+
 $scope.getPinById =getPinById;
 
 
@@ -360,10 +373,11 @@ const starterPatterns = [
   // {name: 'bigTriangle'},
 ]
 const starterPattern = starterPatterns[getRandomInt(0, starterPatterns.length-1)];
+const xTot = 1200;
+const yTot = 600;
+const totalPins = ((xTot / 40) - 1) * ((yTot / 40) - 1);
 function calculateCenter() {
 
-  xTot = 1200;
-  yTot = 600;
 
   return randomCenter({x: correctCenter(xTot) , y: correctCenter(yTot)});
   
@@ -433,11 +447,11 @@ function group(pins, directionIndex) {
       break;
     case 3:
       threePins.push(pinsGroup);
-      cleanGroup(twoPins, pinsGroup);
+      RemoveFromGroup(twoPins, pinsGroup);
       break;
     case 4:
       fourPins.push(pinsGroup);
-      cleanGroup(threePins, pinsGroup);
+      RemoveFromGroup(threePins, pinsGroup);
       break;
   
     default:
@@ -465,7 +479,7 @@ function group(pins, directionIndex) {
 //   }
 // }
 
-function cleanGroup(bigGroup, pinsGroup) {
+function RemoveFromGroup(bigGroup, pinsGroup) {
   console.log("clean group");
   console.log(bigGroup);
   console.log(pinsGroup);
@@ -478,35 +492,70 @@ function cleanGroup(bigGroup, pinsGroup) {
     }
 }
 
-function cleanThreePinGroup(userId) {
-  const toClean = threePins.filter(gp => {
-    const firstNextPin = calculateNextPin(getPinById(gp.pinIds[0]), directions[gp.directionIndex], -1); 
-    const lastNextPin = calculateNextPin(getPinById(gp.pinIds[gp.pinIds.length - 1]), directions[gp.directionIndex], 1); 
+function isGroupValid(group) {
+
+  const otherPlayerId = players.find(x => x.id != group.playerId).id;
+
+  const result = operation(getPinById(group.pinIds[group.pinIds.length-1]), 1) === 5 || operation(getPinById(group.pinIds[0]), -1) === 5;
+  return result;
+  function operation(pin, sign) {
+    let count = group.pinIds.length;
+    const c = 7 - group.pinIds.length;
+    for (let index = 1; index < c; index++) {
+      const nextPin = calculateNextPin(pin, directions[group.directionIndex], sign, index);
+      if (count < 5) {
+        if(!isPinValid(nextPin) || getPinByXYAndUserId(nextPin, otherPlayerId)) break;
+        else count++;
+      } else {
+        const tmp = getPinByXYAndUserId(nextPin, group.playerId);
+        if(tmp) count++;
+      }
+    }
+
+    return count;
+  }
+
+}
+
+// function cleanThreePinGroup(userId) {
+//   let toClean = threePins.filter(x => x.userId === userId);
+//   toClean = toClean.filter(gp => {
+//     const firstNextPin = getPinByXYAndUserId(calculateNextPin(getPinById(gp.pinIds[0]), directions[gp.directionIndex], -1), userId); 
+//     const lastNextPin = getPinByXYAndUserId(calculateNextPin(getPinById(gp.pinIds[gp.pinIds.length - 1]), directions[gp.directionIndex], 1), userId); 
     
+//     if(firstNextPin && lastNextPin) return true;
     
 
-  } );
-}
+    
+
+//   } );
+// }
 
 function smartPlay() {
 
   //fourPins --automaticPlayer
   const autoFourPins = fourPins.filter(x => x.playerId === automaticPlayer.id);
+
+  
   if(autoFourPins.length > 0) {
     const firstGroupPins = autoFourPins[0];
+    if(!isGroupValid(firstGroupPins)){
+      fourPins.splice(fourPins.findIndex(x => x.playerId === automaticPlayer.id), 1);
+        return smartPlay();
+    }
     const nextFirstPin = calculateNextPin(getPinById(firstGroupPins.pinIds[0]), directions[firstGroupPins.directionIndex], -1, 1);
     const lastPin = getPinById(firstGroupPins.pinIds[firstGroupPins.pinIds.length - 1]);
     const nextLastPin = calculateNextPin(lastPin, directions[firstGroupPins.directionIndex], 1, 1);
-    if ( //!pins.find(p => p.x === nextFirstPin.x && p.y === nextFirstPin.y) && 
+    if (
           isPinValid(nextFirstPin) &&
           pins.findIndex(p => p.x == nextFirstPin.x && p.y === nextFirstPin.y) === -1
-          && isComplete(nextFirstPin, false, firstGroupPins.directionIndex).length === 5
+          // && isComplete(nextFirstPin, false, firstGroupPins.directionIndex).length === 5
         ) {
       play(nextFirstPin);
-    } else if( //!pins.find(p => p.x === nextLastPin.x && p.y === nextLastPin.y) &&
+    } else if(
                 isPinValid(nextLastPin)  
                 && pins.findIndex(p => p.x == nextLastPin.x && p.y === nextLastPin.y) === -1
-                && isComplete(nextLastPin, false, firstGroupPins.directionIndex).length === 5
+                // && isComplete(nextLastPin, false, firstGroupPins.directionIndex).length === 5
               ) {
       play(nextLastPin);
     } else {
@@ -520,18 +569,23 @@ function smartPlay() {
   const playerFourPins = fourPins.filter(x => x.playerId != automaticPlayer.id);
   if(playerFourPins.length > 0) {
     const firstGroupPins = playerFourPins[0];
+    if(!isGroupValid(firstGroupPins)){
+      fourPins.splice(fourPins.findIndex(x => x.playerId != automaticPlayer.id), 1);
+      smartPlay();
+      return;
+    }
     const nextFirstPin = calculateNextPin(getPinById(firstGroupPins.pinIds[0]), directions[firstGroupPins.directionIndex], -1, 1);
     const lastPin = getPinById(firstGroupPins.pinIds[firstGroupPins.pinIds.length - 1]);
     const nextLastPin = calculateNextPin(lastPin, directions[firstGroupPins.directionIndex], 1, 1);
     if ( isPinValid(nextFirstPin) 
           && pins.findIndex(p => p.x == nextFirstPin.x && p.y === nextFirstPin.y) === -1
-          && isComplete(nextFirstPin, false, firstGroupPins.directionIndex, true).length === 5
+          // && isComplete(nextFirstPin, false, firstGroupPins.directionIndex, true).length === 5
         ) {
       play(nextFirstPin);
     } else if(
                 isPinValid(nextLastPin)  
                 && pins.findIndex(p => p.x == nextLastPin.x && p.y === nextLastPin.y) === -1
-                && isComplete(nextLastPin, false, firstGroupPins.directionIndex, true).length === 5
+                // && isComplete(nextLastPin, false, firstGroupPins.directionIndex, true).length === 5
               ) {
       play(nextLastPin);
     } else {
@@ -553,6 +607,11 @@ function smartPlay() {
             && isPinValid(nextLastPin) && pins.findIndex(z => z.x === nextLastPin && z.y === nextLastPin.y) < -1;
     });
     firstGroupPins = firstGroupPins ? firstGroupPins : autoThreePins[0];
+    if(!isGroupValid(firstGroupPins)){
+      threePins.splice(threePins.findIndex(x => x.playerId === automaticPlayer.id), 1);
+        smartPlay();
+        return;
+    }
     const nextFirstPin = calculateNextPin(getPinById(firstGroupPins.pinIds[0]), directions[firstGroupPins.directionIndex], -1, 1);
     const lastPin = getPinById(firstGroupPins.pinIds[firstGroupPins.pinIds.length - 1]);
     const nextLastPin = calculateNextPin(lastPin, directions[firstGroupPins.directionIndex], 1, 1);
@@ -573,8 +632,12 @@ function smartPlay() {
       smartPlay();
       return;
     }
-    play(resultPins[getRandomInt(0, resultPins.length - 1)]);
-    return;
+    if(playRandom(resultPins)) return;
+     else {
+      playerThreePins.splice(playerThreePins.findIndex(p => p === firstGroupPins), 1);
+      smartPlay();
+     }
+     return;
   }
   
   //threePins --player
@@ -589,6 +652,11 @@ function smartPlay() {
             && isPinValid(nextLastPin) && pins.findIndex(z => z.x === nextLastPin && z.y === nextLastPin.y) < -1;
     });
     firstGroupPins = firstGroupPins ? firstGroupPins : playerThreePins[0];
+    if(!isGroupValid(firstGroupPins)){
+      threePins.splice(threePins.findIndex(x => x.playerId != automaticPlayer.id), 1);
+        smartPlay();
+        return;
+    }
     const nextFirstPin = calculateNextPin(getPinById(firstGroupPins.pinIds[0]), directions[firstGroupPins.directionIndex], -1, 1);
     const lastPin = getPinById(firstGroupPins.pinIds[firstGroupPins.pinIds.length - 1]);
     const nextLastPin = calculateNextPin(lastPin, directions[firstGroupPins.directionIndex], 1, 1);
@@ -609,42 +677,146 @@ function smartPlay() {
       smartPlay();
       return;
     }
-    play(resultPins[getRandomInt(0, resultPins.length - 1)]);
-    return;
+     if(playRandom(resultPins)) return;
+     else {
+      playerThreePins.splice(playerThreePins.findIndex(p => p === firstGroupPins), 1);
+      smartPlay();
+     }
+     return;
   }
 
-  
-  // //threePins + 1 --automaticPlayer
-  // const autoFourPins = fourPins.filter(x => x.playerId === automaticPlayer.id);
-  // if(autoFourPins.length > 0) {
-  //   const firstGroupPins = autoFourPins[0];
-  //   const nextFirstPin = calculateNextPin(firstGroupPins.pins[0], directions[firstGroupPins.directionIndex], -1, 1);
-  //   const lastPin = firstGroupPins.pins[firstGroupPins.pins.length - 1];
-  //   const nextLastPin = calculateNextPin(lastPin, directions[firstGroupPins.directionIndex], 1, 1);
-  //   if ( isPinValid(nextFirstPin) 
-  //         && pins.findIndex(p => p.x == nextFirstPin.x && p.y === nextFirstPin.y) === -1
-  //         && isComplete(nextFirstPin, false, firstGroupPins.directionIndex).length === 5
-  //       ) {
-  //     play(nextFirstPin);
-  //   } else if(
-  //               isPinValid(nextLastPin)  
-  //               && pins.findIndex(p => p.x == nextLastPin.x && p.y === nextLastPin.y) === -1
-  //               && isComplete(nextLastPin, false, firstGroupPins.directionIndex).length === 5
-  //             ) {
-  //     play(nextLastPin);
-  //   } else {
-  //     fourPins.splice(fourPins.findIndex(x => x.playerId === automaticPlayer.id), 1);
-  //     smartPlay();
-  //   }
-  //   return;
-  // }
+  //twoPins --automaticPlayer
+  const autoTwoPins = twoPins.filter(x => x.playerId === automaticPlayer.id);
+  if(autoTwoPins.length > 0) {
+    let firstGroupPins = autoTwoPins.find(x => {
+      const firstPin = getPinById(x.pinIds[0]);
+      const lastPin = getPinById(x.pinIds[x.pinIds.length - 1]);
+      const nextFirstPin =  calculateNextPin(firstPin, directions[x.directionIndex], -1);
+      const nextLastPin =  calculateNextPin(lastPin, directions[x.directionIndex], 1);
+      return isPinValid(nextFirstPin) && pins.findIndex(z => z.x === nextFirstPin && z.y === nextFirstPin.y) < -1
+            && isPinValid(nextLastPin) && pins.findIndex(z => z.x === nextLastPin && z.y === nextLastPin.y) < -1;
+    });
+    firstGroupPins = firstGroupPins ? firstGroupPins : autoTwoPins[0];
+    if(!isGroupValid(firstGroupPins)){
+      twoPins.splice(twoPins.findIndex(x => x.playerId === automaticPlayer.id), 1);
+        smartPlay();
+        return;
+    }
+    const nextFirstPin = calculateNextPin(getPinById(firstGroupPins.pinIds[0]), directions[firstGroupPins.directionIndex], -1, 1);
+    const lastPin = getPinById(firstGroupPins.pinIds[firstGroupPins.pinIds.length - 1]);
+    const nextLastPin = calculateNextPin(lastPin, directions[firstGroupPins.directionIndex], 1, 1);
+    let resultPins = [];
+    if ( 
+          isPinValid(nextFirstPin) &&
+          pins.findIndex(p => p.x === nextFirstPin.x && p.y === nextFirstPin.y) === -1
+          && pins.findIndex(p => p.x === nextFirstPin.x && p.y === nextFirstPin.y) === -1
+        ) {
+      resultPins.push(nextFirstPin);
+    } else if( 
+                isPinValid(nextLastPin)  
+                && pins.findIndex(p => p.x == nextLastPin.x && p.y === nextLastPin.y) === -1
+              ) {
+        resultPins.push(nextLastPin);
+    } else {
+      twoPins.splice(twoPins.findIndex(x => x.playerId === automaticPlayer.id), 1);
+      smartPlay();
+      return;
+    }
+    if(playRandom(resultPins)) return;
+     else {
+      playerTwoPins.splice(playerTwoPins.findIndex(p => p === firstGroupPins), 1);
+      smartPlay();
+     }
+     return;
+  }
+
+  //twoPins --player
+  const playerTwoPins = twoPins.filter(x => x.playerId != automaticPlayer.id);
+  if(playerTwoPins.length > 0) {
+    let firstGroupPins = playerTwoPins.find(x => {
+      const firstPin = getPinById(x.pinIds[0]);
+      const lastPin = getPinById(x.pinIds[x.pinIds.length - 1]);
+      const nextFirstPin =  calculateNextPin(firstPin, directions[x.directionIndex], -1);
+      const nextLastPin =  calculateNextPin(lastPin, directions[x.directionIndex], 1);
+      return isPinValid(nextFirstPin) && pins.findIndex(z => z.x === nextFirstPin && z.y === nextFirstPin.y) < -1
+            && isPinValid(nextLastPin) && pins.findIndex(z => z.x === nextLastPin && z.y === nextLastPin.y) < -1;
+    });
+    firstGroupPins = firstGroupPins ? firstGroupPins : playerTwoPins[0];
+    if(!isGroupValid(firstGroupPins)){
+      twoPins.splice(twoPins.findIndex(x => x.playerId != automaticPlayer.id), 1);
+        smartPlay();
+        return;
+    }
+    const nextFirstPin = calculateNextPin(getPinById(firstGroupPins.pinIds[0]), directions[firstGroupPins.directionIndex], -1, 1);
+    const lastPin = getPinById(firstGroupPins.pinIds[firstGroupPins.pinIds.length - 1]);
+    const nextLastPin = calculateNextPin(lastPin, directions[firstGroupPins.directionIndex], 1, 1);
+    let resultPins = [];
+    if ( 
+          isPinValid(nextFirstPin) &&
+          pins.findIndex(p => p.x === nextFirstPin.x && p.y === nextFirstPin.y) === -1
+          && pins.findIndex(p => p.x === nextFirstPin.x && p.y === nextFirstPin.y) === -1
+        ) {
+      resultPins.push(nextFirstPin);
+    } else if( 
+                isPinValid(nextLastPin)  
+                && pins.findIndex(p => p.x == nextLastPin.x && p.y === nextLastPin.y) === -1
+              ) {
+        resultPins.push(nextLastPin);
+    } else {
+      twoPins.splice(twoPins.findIndex(x => x.playerId === automaticPlayer.id), 1);
+      smartPlay();
+      return;
+    }
+     if(playRandom(resultPins)) return;
+     else {
+      playerTwoPins.splice(playerTwoPins.findIndex(p => p === firstGroupPins), 1);
+      smartPlay();
+     }
+     return;
+  }
+
 
 
 }
 
+function playLastPin() {
+  let totYs = yTot / 40;
+  let totXs = xTot / 40;
+  let theYs = [];
+  
+  for (let index = 1; index < totYs; index++) {
+    theYs.push(index * 40);
+  }
+
+  while (theYs.length > 0) {
+    let aleatoryPin = {y: getRandomInt(0, theYs.length - 1)};
+    for (let index = 1; index < totXs; index++) {
+      aleatoryPin.x = (index * 40);
+
+      if(getPinByXY(aleatoryPin)) break;
+    }
+    if(getPinByXY(aleatoryPin)) break;
+
+    theYs.splice(theYs.findIndex(y => y === aleatoryPin.y), 1);
+  }
+  
+}
+
+function playRandom(pinGroup) {
+let rdmPin;
+  
+  while (pinGroup.length > 0) {
+    rdmPin = pinGroup[getRandomInt(0, pinGroup.length - 1)];
+    if(play(rdmPin)) {
+      return true;
+    } else {
+      pinGroup.splice(pinGroup.findIndex(p => p.x === rdmPin.x && p.y === rdmPin.y), 1);
+    }
+  }
+  return false;
+}
+
 //#endregion
-
-
 
 //#region Helpers
 
